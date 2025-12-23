@@ -1,0 +1,80 @@
+===============================
+LABORATÓRIO LDAP – COMANDOS
+===============================
+
+1) Subir o servidor LDAP local (Docker)
+---------------------------------------
+docker compose up -d
+
+
+2) Copiar arquivo LDIF para o container
+---------------------------------------
+docker cp 01-estrutura-e-usuario.ldif openldap:/tmp/01-estrutura-e-usuario.ldif
+
+
+3) Criar estrutura e usuário no LDAP
+------------------------------------
+docker exec -it openldap ldapadd -x ^
+  -D "cn=admin,dc=example,dc=org" ^
+  -w "admin123" ^
+  -f /tmp/01-estrutura-e-usuario.ldif
+
+Observação:
+Este comando cria:
+- OU: users
+- Usuário: testuser
+- E-mail: gabrielpedro.veras@gmail.com
+
+
+4) Consultar usuário no LDAP (search por uid)
+---------------------------------------------
+docker exec -it openldap ldapsearch -x -LLL -H ldap://localhost ^
+  -D "cn=admin,dc=example,dc=org" -w "admin123" ^
+  -b "dc=example,dc=org" "(uid=testuser)" dn cn uid mail
+
+
+5) Consultar usuário no LDAP (search por e-mail)
+------------------------------------------------
+docker exec -it openldap ldapsearch -x -LLL -H ldap://localhost ^
+  -D "cn=admin,dc=example,dc=org" -w "admin123" ^
+  -b "dc=example,dc=org" "(mail=gabrielpedro.veras@gmail.com)" dn cn uid mail
+
+
+6) Testar autenticação LDAP (bind do usuário)
+---------------------------------------------
+docker exec -it openldap ldapwhoami -x ^
+  -D "uid=testuser,ou=users,dc=example,dc=org" ^
+  -w "Teste@123"
+
+Resultado esperado:
+dn:uid=testuser,ou=users,dc=example,dc=org
+
+
+7) Testar falha de autenticação (senha inválida)
+------------------------------------------------
+docker exec -it openldap ldapwhoami -x ^
+  -D "uid=testuser,ou=users,dc=example,dc=org" ^
+  -w "senha_errada"
+
+
+8) Informações importantes do ambiente
+--------------------------------------
+LDAP URL        : ldap://localhost:389
+Base DN         : dc=example,dc=org
+Admin DN        : cn=admin,dc=example,dc=org
+Admin Password  : admin123
+User DN         : uid=testuser,ou=users,dc=example,dc=org
+User Password   : Teste@123
+
+
+9) Fluxo de autenticação usado pela API
+---------------------------------------
+1. Bind técnico (admin)
+2. Busca do usuário por e-mail (mail)
+3. Recuperação do DN do usuário
+4. Bind com DN + senha informada
+5. Login autorizado se o bind for bem-sucedido
+
+===============================
+FIM DO DOCUMENTO
+===============================
